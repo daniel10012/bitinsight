@@ -1,6 +1,6 @@
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession, SQLContext
-from pyspark.sql.functions import explode, concat, col, lit, split, translate, row_number, arrays_zip, when, udf, sum
+from pyspark.sql.functions import explode, concat, col, lit, split, translate, row_number, arrays_zip, when, udf, sum, coalesce
 from pyspark.sql.types import *
 from flagged_parsers.ofaclist import get_ofac_addresses
 from pyspark.sql import Row
@@ -134,10 +134,15 @@ vin_df = jtest_df.drop("tx").drop("vin")
 
 # Addresses dataframe and write to CSV
 ad_df = vout_df.groupby("address").agg(sum("value").alias("total_value"))
-ad_df = ad_df.select("address", "total_value").withColumn(":LABEL", lit("Address"))
+ad_df = ad_df.select("address", "total_value")
 address_df = ad_df.join(flagged_df, ad_df.address == flagged_df.address, "full").drop(flagged_df.address)
 
-address_df.where(address_df.address == "12QtD5BFwRsdNsAZY76UVE1xyCGNTojH9h").show(truncate=False)
+address_df = address_df.withColumn(":LABEL", when(address_df.flagger != "null", "Address;Flagged").otherwise("Address"))
+
+
+
+#address_df.where(address_df.address == "12QtD5BFwRsdNsAZY76UVE1xyCGNTojH9h").show(truncate=False)
+
 
 address_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/address_df.csv')
 
