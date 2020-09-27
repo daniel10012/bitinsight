@@ -17,30 +17,33 @@ specific address. [06-06-2018]
 '''
 
 
+def get_ofac_addresses():
 
-r = requests.get('https://www.treasury.gov/ofac/downloads/sdn.csv')
-string = r.text
+    r = requests.get('https://www.treasury.gov/ofac/downloads/sdn.csv')
+    string = r.text
 
-indicator = "Digital Currency Address - "
+    indicator = "Digital Currency Address - "
 
-items = []
+    items = []
 
-for line in string.splitlines():
+    for line in string.splitlines():
 
-    if indicator in line:
-        item = {}
-        addresses = []
-        elements = line.split()
-        item["name"] = elements[0].split(",")[1] + " " + elements[1].split(",")[0]
+        if indicator in line:
+            item = {}
+            addresses = []
+            elements = line.split()
+            item["abuser"] = elements[0].split(",")[1] + " " + elements[1].split(",")[0]
 
-        for el in elements:
+            for el in elements:
 
-            if elements[elements.index(el) - 1] == "XBT":
+                if elements[elements.index(el) - 1] == "XBT":
 
-                addresses.append(el.rstrip(";"))
-                item["addresses"] = addresses
-        items.append(item.copy())
+                    addresses.append(el.rstrip(";"))
+                    item["addresses"] = addresses
+            items.append(item.copy())
 
-print(items)
+    return(items)
+
+
 
 

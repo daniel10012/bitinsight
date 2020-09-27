@@ -2,6 +2,10 @@ from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession, SQLContext
 from pyspark.sql.functions import explode, concat, col, lit, split, translate, row_number, arrays_zip, when, udf, sum
 from pyspark.sql.types import *
+from flagged_parsers.ofaclist import get_ofac_addresses
+from pyspark.sql import Row
+import pandas as pd
+
 
 # Initiate Spark Session
 
@@ -9,6 +13,32 @@ spark = SparkSession\
         .builder\
         .appName("SparkDf")\
         .getOrCreate()
+
+
+# Import flagged addresses df
+
+#OFAC
+ofac_list = get_ofac_addresses()
+ofac_df = spark.createDataFrame(Row(**x) for x in ofac_list).withColumn("address", explode("addresses")).withColumn("flagger", lit("OFAC"))
+ofac_df = ofac_df.select("address", "flagger", "abuser")
+ofac_df.show()
+
+#bitcoinabuse
+
+babuse_df = pd.read_csv("./flagged_data/records_forever.csv", encoding = "ISO-8859-1", sep=',', error_bad_lines=False, index_col=False, dtype=str)
+babuse_df['flagger']='Bitcoinabuse'
+babuse_df = babuse_df[["address", "flagger", "abuse_type_other", "abuser" ]]
+babuse_df = spark.createDataFrame(babuse_df.astype(str))
+
+babuse_df.show()
+
+# Consolidated flagged
+
+
+
+
+
+
 
 
 # Create blockchain schema
