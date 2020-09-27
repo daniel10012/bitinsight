@@ -1,1 +1,0 @@
-cat csvs/addresses_df.csv/part* | sed -e '/^ *$/d' > csvs/addresses.csv
