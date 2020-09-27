@@ -21,7 +21,7 @@ spark = SparkSession\
 ofac_list = get_ofac_addresses()
 ofac_df = spark.createDataFrame(Row(**x) for x in ofac_list).withColumn("address", explode("addresses")).withColumn("flagger", lit("OFAC")).withColumn("type", lit("nan"))
 ofac_df = ofac_df.select("address", "flagger", "type", "abuser")
-ofac_df.show(truncate=False)
+#ofac_df.show(truncate=False)
 
 #bitcoinabuse
 
@@ -139,7 +139,7 @@ address_df = ad_df.join(flagged_df, ad_df.address == flagged_df.address, "full")
 
 address_df = address_df.withColumn(":LABEL", when(address_df.flagger != "null", "Address;Flagged").otherwise("Address"))
 
-
+address_df.show()
 
 #address_df.where(address_df.address == "12QtD5BFwRsdNsAZY76UVE1xyCGNTojH9h").show(truncate=False)
 
