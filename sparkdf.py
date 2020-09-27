@@ -19,27 +19,22 @@ spark = SparkSession\
 
 #OFAC
 ofac_list = get_ofac_addresses()
-ofac_df = spark.createDataFrame(Row(**x) for x in ofac_list).withColumn("address", explode("addresses")).withColumn("flagger", lit("OFAC"))
-ofac_df = ofac_df.select("address", "flagger", "abuser")
-ofac_df.show()
+ofac_df = spark.createDataFrame(Row(**x) for x in ofac_list).withColumn("address", explode("addresses")).withColumn("flagger", lit("OFAC")).withColumn("type", lit("nan"))
+ofac_df = ofac_df.select("address", "flagger", "type", "abuser")
+ofac_df.show(truncate=False)
 
 #bitcoinabuse
 
 babuse_df = pd.read_csv("./flagged_data/records_forever.csv", encoding = "ISO-8859-1", sep=',', error_bad_lines=False, index_col=False, dtype=str)
 babuse_df['flagger']='Bitcoinabuse'
 babuse_df = babuse_df[["address", "flagger", "abuse_type_other", "abuser" ]]
-babuse_df = spark.createDataFrame(babuse_df.astype(str))
+babuse_df = spark.createDataFrame(babuse_df.astype(str), ["address", "flagger", "type", "abuser"])
 
-babuse_df.show()
+#babuse_df.show()
 
 # Consolidated flagged
 
-
-
-
-
-
-
+flagged_df = ofac_df.union(babuse_df).dropDuplicates(["address"])
 
 # Create blockchain schema
 
@@ -122,7 +117,7 @@ jtest_df = jtest_df.withColumn("vout", explode("vouts"))
 jtest_df = jtest_df.withColumn("vout_id", concat(jtest_df.vout.n, lit("_"), jtest_df.tx.txid)).withColumn("value", jtest_df.vout.value).withColumn("addresses", jtest_df.vout.scriptPubKey.addresses)
 jtest_df = jtest_df.withColumn("address", explode("addresses")).withColumn("txid", jtest_df.tx.txid)
 vout_df = jtest_df.select("txid", "time", "vout_id", "value", "address")
-vout_df.show(truncate=False)
+#vout_df.show(truncate=False)
 
 # Get Vin dataframe
 
@@ -131,16 +126,18 @@ jtest_df = jtest_df.withColumn("vin", jtest_df.tx.vin).withColumn("txid",jtest_d
 jtest_df = jtest_df.withColumn("vin", explode("vin"))
 jtest_df = jtest_df.withColumn("vin_id", concat(jtest_df.vin.vout, lit("_"), jtest_df.vin.txid))
 vin_df = jtest_df.drop("tx").drop("vin")
-vin_df.show(truncate=False)
+#vin_df.show(truncate=False)
 
 # join vin vout dataframe
 #joined_df = vout_df.join(vin_df, vout_df.txid == vin_df.txid, how='full')
 #joined_df.show()
 
 # Addresses dataframe and write to CSV
-address_df = vout_df.groupby("address").agg(sum("value").alias("total_value"))
-address_df = address_df.select("address", "total_value").withColumn(":LABEL", lit("Address"))
-#address_df.show()
+ad_df = vout_df.groupby("address").agg(sum("value").alias("total_value"))
+ad_df = ad_df.select("address", "total_value").withColumn(":LABEL", lit("Address"))
+address_df = ad_df.join(flagged_df, ad_df.address == flagged_df.address, "full").drop(flagged_df.address)
+
+address_df.where(address_df.address == "12QtD5BFwRsdNsAZY76UVE1xyCGNTojH9h").show(truncate=False)
 
 address_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/address_df.csv')
 
@@ -164,7 +161,7 @@ rel_txad_df.repartition(1).write.format('csv').option('header',False).mode('over
 # rel adtx dataframe
 rel_adtx_df = vin_df.join(vout_df, vin_df.vin_id == vout_df.vout_id)
 rel_adtx_df = rel_adtx_df.select(vout_df.address, vin_df.txid).withColumn("type", lit("in"))
-rel_adtx_df.show(truncate=False)
+#rel_adtx_df.show(truncate=False)
 
 rel_adtx_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/rel_adtx_df.csv')
 
