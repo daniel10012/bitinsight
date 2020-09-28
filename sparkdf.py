@@ -1,11 +1,11 @@
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession, SQLContext
-from pyspark.sql.functions import explode, concat, col, lit, split, translate, row_number, arrays_zip, when, udf, sum, coalesce
+from pyspark.sql.functions import explode, concat, col, lit, split, translate, row_number, arrays_zip, when, udf, sum, coalesce, collect_set
 from pyspark.sql.types import *
 from flagged_parsers.ofaclist import get_ofac_addresses
 from pyspark.sql import Row
 import pandas as pd
-
+#from graphframes import *
 
 # Initiate Spark Session
 
@@ -115,6 +115,9 @@ jtest_df = btc_df.select("tx", "time")          #.where(btc_df.height == 150000)
 jtest_df = jtest_df.withColumn("vouts", jtest_df.tx.vout)
 jtest_df = jtest_df.withColumn("vout", explode("vouts"))
 jtest_df = jtest_df.withColumn("vout_id", concat(jtest_df.vout.n, lit("_"), jtest_df.tx.txid)).withColumn("value", jtest_df.vout.value).withColumn("addresses", jtest_df.vout.scriptPubKey.addresses)
+
+#ad_vout_graph_df = jtest_df.select(jtest_df.tx.txid, jtest_df.addresses).show(truncate=False)
+
 jtest_df = jtest_df.withColumn("address", explode("addresses")).withColumn("txid", jtest_df.tx.txid)
 vout_df = jtest_df.select("txid", "time", "vout_id", "value", "address")
 #vout_df.show(truncate=False)
@@ -129,8 +132,8 @@ vin_df = jtest_df.drop("tx").drop("vin")
 #vin_df.show(truncate=False)
 
 # join vin vout dataframe
-#joined_df = vout_df.join(vin_df, vout_df.txid == vin_df.txid, how='full')
-#joined_df.show()
+# joined_df = vout_df.join(vin_df, vout_df.txid == vin_df.txid, how='full')
+# joined_df.show()
 
 # Addresses dataframe and write to CSV
 ad_df = vout_df.groupby("address").agg(sum("value").alias("total_value"))
@@ -139,7 +142,7 @@ address_df = ad_df.join(flagged_df, ad_df.address == flagged_df.address, "full")
 
 address_df = address_df.withColumn(":LABEL", when(address_df.flagger != "null", "Address;Flagged").otherwise("Address"))
 
-address_df.show()
+#address_df.show()
 
 #address_df.where(address_df.address == "12QtD5BFwRsdNsAZY76UVE1xyCGNTojH9h").show(truncate=False)
 
@@ -171,10 +174,20 @@ rel_adtx_df = rel_adtx_df.select(vout_df.address, vin_df.txid).withColumn("type"
 rel_adtx_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/rel_adtx_df.csv')
 
 
+# graphframes
 
+vertices = ad_df.select("address").distinct()
+vertices.show()
 
+edges = rel_adtx_df.select("txid", "address").withColumnRenamed("address", "address_in")
+edges = edges.join(rel_txad_df, edges.txid == rel_txad_df.txid).select("address_in", "address")
+edges = edges.withColumnRenamed("address_in", "src").withColumnRenamed("address", "dst")
+#edges = edges.groupBy("address").agg(collect_set('word').alias('words'))
+edges.show()
 
-
+# g = GraphFrame(vertices, edges)
+#
+# g.show()
 
 
 
