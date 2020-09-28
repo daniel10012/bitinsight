@@ -5,6 +5,7 @@ from pyspark.sql.types import *
 from flagged_parsers.ofaclist import get_ofac_addresses
 from pyspark.sql import Row
 import pandas as pd
+import CONFIG
 #from graphframes import *
 
 # Initiate Spark Session
@@ -14,6 +15,7 @@ spark = SparkSession\
         .appName("SparkDf")\
         .getOrCreate()
 
+spark_context = spark.sparkContext
 
 # Import flagged addresses df
 
@@ -104,7 +106,7 @@ schema = StructType([
 
 # Import blockchain in Dataframes
 
-btc_df = spark.read.json("./json", multiLine=True, schema=schema) \
+btc_df = spark.read.json(CONFIG.S3blocks, multiLine=True, schema=schema) \
        .withColumn("tx", explode("tx"))
 
 #btc_df.show()
@@ -176,18 +178,26 @@ rel_adtx_df.repartition(1).write.format('csv').option('header',False).mode('over
 
 # graphframes
 
-vertices = ad_df.select("address").distinct()
-vertices.show()
-
-edges = rel_adtx_df.select("txid", "address").withColumnRenamed("address", "address_in")
-edges = edges.join(rel_txad_df, edges.txid == rel_txad_df.txid).select("address_in", "address")
-edges = edges.withColumnRenamed("address_in", "src").withColumnRenamed("address", "dst")
-#edges = edges.groupBy("address").agg(collect_set('word').alias('words'))
-edges.show()
-
+# vertices = ad_df.select("address").distinct()
+# vertices = vertices.withColumnRenamed("address", "id")
+# vertices.show()
+#
+# edges = rel_adtx_df.select("txid", "address").withColumnRenamed("address", "address_in")
+# edges = edges.join(rel_txad_df, edges.txid == rel_txad_df.txid).select("address_in", "address")
+# edges = edges.withColumnRenamed("address_in", "src").withColumnRenamed("address", "dst")
+# #edges = edges.groupBy("address").agg(collect_set('word').alias('words'))
+# edges.show()
+#
 # g = GraphFrame(vertices, edges)
 #
-# g.show()
+# g.inDegrees.show()
+# spark_context.setCheckpointDir(CONFIG.S3graph)
+# wallets = g.connectedComponents()
+# wallets.show(100, truncate=False)
+# #wallets.filter("id  = '1DryULtebgUdWNgt6tZBXdcgDDDPwSF3Z4'").show(truncate=False)
+# #wallets.where("id  = '3NLSkSfYb4vdRvSNxgqUi2bxib58E7E9ip'").show(truncate=False)
+
+
 
 
 
