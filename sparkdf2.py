@@ -106,7 +106,7 @@ schema = StructType([
 
 # Import blockchain in Dataframes
 
-btc_df = spark.read.json("./json", multiLine=True, schema=schema) \
+btc_df = spark.read.json(CONFIG.S3blocks, multiLine=True, schema=schema) \
        .withColumn("tx", explode("tx"))
 
 btc_df.show()
@@ -144,13 +144,12 @@ address_df = ad_df.join(flagged_df, ad_df.address == flagged_df.address, "full")
 
 address_df = address_df.withColumn(":LABEL", when(address_df.flagger != "null", "Address;Flagged").otherwise("Address"))
 
-#address_df.show()
+address_df.show()
 
 #address_df.where(address_df.address == "12QtD5BFwRsdNsAZY76UVE1xyCGNTojH9h").show(truncate=False)
 
 
-address_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/address_df.csv')
-
+address_df.write.csv(f"{CONFIG.S3csv}address_df", header=None)
 
 # Tx dataframe
 
@@ -159,12 +158,13 @@ tx_df = tx_df.withColumn("txid", tx_df.tx.txid).drop("tx")
 tx_df = tx_df.select("txid", "time").withColumn(":LABEL", lit("Transaction"))
 #tx_df.show()
 
-tx_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/tx_df.csv')
+tx_df.write.csv(f"{CONFIG.S3csv}tx_df", header=None)
 
 # rel txad dataframe
 
 rel_txad_df = vout_df.select("txid", "address").withColumn("type", lit("out"))
-rel_txad_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/rel_txad_df.csv')
+
+rel_txad_df.write.csv(f"{CONFIG.S3csv}rel_txad_df", header=None)
 #rel_txad_df.show()
 
 
@@ -173,7 +173,7 @@ rel_adtx_df = vin_df.join(vout_df, vin_df.vin_id == vout_df.vout_id)
 rel_adtx_df = rel_adtx_df.select(vout_df.address, vin_df.txid).withColumn("type", lit("in"))
 #rel_adtx_df.show(truncate=False)
 
-rel_adtx_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/rel_adtx_df.csv')
+rel_adtx_df.write.csv(f"{CONFIG.S3csv}rel_adtx_df", header=None)
 
 
 # graphframes
@@ -196,11 +196,4 @@ rel_adtx_df.repartition(1).write.format('csv').option('header',False).mode('over
 # wallets.show(100, truncate=False)
 # #wallets.filter("id  = '1DryULtebgUdWNgt6tZBXdcgDDDPwSF3Z4'").show(truncate=False)
 # #wallets.where("id  = '3NLSkSfYb4vdRvSNxgqUi2bxib58E7E9ip'").show(truncate=False)
-
-
-
-
-
-
-
 
