@@ -197,3 +197,4 @@ rel_adtx_df.write.csv(f"{CONFIG.S3csv}rel_adtx_df", header=None)
 # #wallets.filter("id  = '1DryULtebgUdWNgt6tZBXdcgDDDPwSF3Z4'").show(truncate=False)
 # #wallets.where("id  = '3NLSkSfYb4vdRvSNxgqUi2bxib58E7E9ip'").show(truncate=False)
 
+#r

@@ -30,9 +30,10 @@ ofac_df = ofac_df.select("address", "flagger", "type", "abuser")
 babuse_df = pd.read_csv("./flagged_data/records_forever.csv", encoding = "ISO-8859-1", sep=',', error_bad_lines=False, index_col=False, dtype=str)
 babuse_df['flagger']='Bitcoinabuse'
 babuse_df = babuse_df[["address", "flagger", "abuse_type_other", "abuser" ]]
+
 babuse_df = spark.createDataFrame(babuse_df.astype(str), ["address", "flagger", "type", "abuser"])
 
-#babuse_df.show()
+babuse_df.show()
 
 # Consolidated flagged
 
@@ -109,7 +110,7 @@ schema = StructType([
 btc_df = spark.read.json("./json", multiLine=True, schema=schema) \
        .withColumn("tx", explode("tx"))
 
-btc_df.show()
+#btc_df.show()
 
 # Get Vout dataframe
 
@@ -144,7 +145,7 @@ address_df = ad_df.join(flagged_df, ad_df.address == flagged_df.address, "full")
 
 address_df = address_df.withColumn(":LABEL", when(address_df.flagger != "null", "Address;Flagged").otherwise("Address"))
 
-#address_df.show()
+address_df.show()
 
 #address_df.where(address_df.address == "12QtD5BFwRsdNsAZY76UVE1xyCGNTojH9h").show(truncate=False)
 
@@ -157,7 +158,7 @@ address_df.repartition(1).write.format('csv').option('header',False).mode('overw
 tx_df = btc_df.select("tx", "time")
 tx_df = tx_df.withColumn("txid", tx_df.tx.txid).drop("tx")
 tx_df = tx_df.select("txid", "time").withColumn(":LABEL", lit("Transaction"))
-#tx_df.show()
+tx_df.show()
 
 tx_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/tx_df.csv')
 
@@ -165,7 +166,7 @@ tx_df.repartition(1).write.format('csv').option('header',False).mode('overwrite'
 
 rel_txad_df = vout_df.select("txid", "address").withColumn("type", lit("out"))
 rel_txad_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/rel_txad_df.csv')
-#rel_txad_df.show()
+rel_txad_df.show()
 
 
 # rel adtx dataframe
