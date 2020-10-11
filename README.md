@@ -2,9 +2,11 @@
 
 ![Image of Cover](images/BitInsight.jpg)
 
-Enabling compliance teams in financial institutions to detect transaction links to blacklisted Bitcoins and follow the regulation.
+Enabling detection of transaction links to blacklisted Bitcoins.
+ 
+Compliance teams at exchanges and financial institutions can leverage this tool when onboarding new clients to comply with regulations.
 
-The graph visualization of the Bitcoin blockchain enables easy tracking and pattern finding for suspicious transactions.
+A graph visualization of the Bitcoin blockchain enables easy tracking and pattern finding for suspicious transactions.
 
 This solutions is offered for Bitcoin but would easily be transferable to other cryptocurrencies such as Ethereum or Litecoin.
 
@@ -17,24 +19,29 @@ This solutions is offered for Bitcoin but would easily be transferable to other 
 
 ## Motivation
 
-Bitcoin is a new asset class that has had an explosive growth over the past 10 years.
+Bitcoin is a new asset class that has been growing exponentially over the past 10 years.
 
-Today it has a market cap of over 120 billion dollars, more than 50 millions active users, recorded over half a billion transactions on chain.
+Today its market cap stands of over 120 billion dollars, there are more than 50 millions active users and  over half a billion transactions have been recorded on chain.
 
 Unfortunately, the relative anonymity it offers has given way to scams, illicit activities and money laundering.
 
 This has attracted the scrutiny of the government leading to more stringent compliance regulation.
 
-Our pipeline to import the blockchain in a graph database will allow easy tracking and pattern analysis of transactions.
+There are many Blockchain explorers out there based on relational databases, and while they are great to explore the content of blocks and transactions, they don't offer an easy way to link them together.
 
-Compliance are then able to easily query and visualize links to blacklisted bitcoins when onboarding new clients.
+Our pipeline imports the Blockchain in a graph database that will allow easy tracking and pattern analysis of transactions.
+
+Compliance teams are then able to easily query and visualize links to blacklisted bitcoins when onboarding new clients.
    
 
 ## Dataset
 
-The whole blockchain up to now (640,000 Blocks as of Sep 2020) is downloaded in JSON format, representing 2.6TB
+### Bitcoin Historical Data
 
-This is done through JSON RPC calls that query different live Bitcoin Core nodes and deserialize raw data of about 350GB.
+The whole Blockchain up to now (640,000 Blocks as of Sep 2020) represents 300GB of raw data and 2.6TB when deserialized in JSON format.
+
+
+### Flagged Addresses
 
 Flagged addresses are obtained by scrapping the OFAC SDN list and using the API of Bitcoinabuse.com.
 
