@@ -149,7 +149,17 @@ This data can be seen as a graph as showed below
 
 ![Image of Graph Bitcoin](images/neo4j-bitcoin.png)
 
+As sees here blocks are linked to each other (by way of a Merkle root) and contain multiple transactions.
 
+Each transaction has inputs and outputs that can be seen as containing the bitcoins themselves.
+
+Each output (that can also be and input) is locked by an address.
+
+Therefore addresses can be seen as the "wallets" that control the bitcoins contained in the outputs.
+
+For our purpose we will only create transaction and address nodes and link them together.
+
+![Image of Graph Detection](images/detection.jpg)
 
 
 
@@ -168,7 +178,7 @@ They are concatenated in a unified schema in a panda dataframe of about 600,000 
 ### Data loading
 
 #### Bitcoin
-Bitcoin Core nodes download the blocks in raw format.
+Bitcoin Core nodes synchronizes the blockchain in raw format from the peers in the network.
 The data is deserialized in the form of JSON files by the way of JSON RPC calls.
 The amount of data in each block is skewed: the last blocks contain many more transactions than the first blocks.
 To allow fast parsing we split the work between 3 nodes, each processing respectively 400K, 200K and 50K blocks.
@@ -275,15 +285,28 @@ Run the Airflow job on the driver to start parsing the Bitcoin data and writing 
 
 ### Neo4j
 
-Install Neo4j on a m5 large instance with 300GB disk.
+Install Neo4j on a m5 large instance with a 3TB disk.
 
-import the csv in /import and concatenate
+Ingesting the whole blockchain data just by iteration could take months.
 
-run `neo4j admin import bla bla`
+A way faster solution is to use the Neo4j Admin import tool that will load in bulk only for a newly created database.
+
+Place the created CSVs in  `/var/lib/neo4j/import/`.
+
+Concatenate them in single files by running `/bashscripts/concat`.
+
+Remove duplicates from the address csv with `uniq -w 26 address.csv > address.csv`
+
+Place the header files in import.
+
+Now start the import by running `sudo /usr/bin/neo4j-admin import --nodes=/var/lib/neo4j/import/tx_header.csv,/var/lib/neo4j/import/tx.csv --nodes=/var/lib/neo4j/import/address_header.csv,/var/lib/neo4j/import/address.csv --relationships=/var/lib/neo4j/import/rel_adtx_header.csv,/var/lib/neo4j/import/rel_adtx.csv --relationships=/var/lib/neo4j/import/rel_txad_header.csv,/var/lib/neo4j/import/rel_txad.csv --database=graph.db`
+
 
 ## Visualization
 
 We can now visualize and query the bitcoin blockchain.
+
+
 
 ### Find link to blacklisted address
 CYPHER blabla
