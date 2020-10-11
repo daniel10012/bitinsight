@@ -36,7 +36,7 @@ Compliance teams are then able to easily query and visualize links to blackliste
 
 ### Bitcoin Historical Data
 
-The whole Blockchain up to now (640,000 Blocks as of Sep 2020) represents 300GB of raw data and 2.6TB when deserialized in JSON format.
+The whole Blockchain up to now (640,000 Blocks as of Sep 2020) represents 300GB of raw data and 2.6TB when deserialized to JSON format.
 
 The JSON format of each block is presented below as an example for `block 100000`
 
@@ -145,7 +145,7 @@ The JSON format of each block is presented below as an example for `block 100000
     }
 ```
 
-After transforming the parsed data we can import it in a graph database that will look like below
+This data can be seen as a graph as showed below
 
 ![Image of Graph Bitcoin](images/neo4j-bitcoin.png)
 
@@ -157,7 +157,7 @@ After transforming the parsed data we can import it in a graph database that wil
 
 Flagged addresses are obtained by scrapping the OFAC SDN list and using the API of Bitcoinabuse.com.
 
-They are formatted in a unified schema and imported in a CSV of about 600,000 rows.
+They are concatenated in a unified schema in a panda dataframe of about 600,000 rows.
 
 
 
@@ -195,17 +195,43 @@ Run `python3 flagged_list.py` to get the full aggregated Flagged list
 
 ### Transformation
 
-Once the [spark cluster](README.md#Spark) is running, run `.workflow.sh`  on the master instance.
+The [spark cluster](README.md#Spark) ingests the JSON files from the S3 buckets to dataframes.
 
-This will extract the Bitcoin data and the Flagged data and ingest them in dataframes for processing.
+It then proceeds to transformations to be able to write CSVs in the right format for ingestion in Neo4j.
 
-The data will be written in CSV form in 4 different folders in S3:
+#### Batch Processing
+
+The large size of the blockchain (2.6TB) implies that a single Spark job would take several days.
+
+This makes it difficult to tune Spark and catch potential errors.
+
+Therefore the job is split into smaller batches of 10K blocks scheduled via Airflow.
+
+Airflow can be set with `airflow initdb` and starting the server `airflow webserver -p 8082` and the scheduler `airflow scheduler`.
+
+We can then launch the job from the UI.
+
+### Tunning
+
+A batch from block 600K to 610K takes up to 2H and results in out of memory errors without tunning.
+
+The highly nested nature of the JSON files makes schema inference by Spark really slow.
+
+Defining a custom schema and coalescing the number of partitions on read to 150 makes the process significantly faster.
+
+The spark cluster has 16 CPU per worker. Optimizing the options to  `--driver-memory 34G --executor-memory 34G --num-executors 8 --executor-cores 5` gives the best performance and there are no more memory issues.
+ 
+### Results
+
+The transformations merges the Bitcoin and Flagged frames and extracts the data in a right format for an ingestion by Neo4j.
+
+CSVs are written in four different folders in S3:
 - address: addresses with a label `FLAGGED` if they have been marked
 - tx: transactions with transaction hash and time of execution
-- rel_ad_tx: `IN` links between addresses and transaction, meaning an address is a sender that transaction
+- rel_ad_tx: `IN` links between addresses and transaction, meaning an address is a sender in that transaction
 - rel_tx_ad: `OUT` links showing transactions sending bitcoin to addresses
 
-Those files will be ingested in our [Neo4j](README.md#Neo4j) graph database for querying.
+Those files will be ingested in our [Neo4j](README.md#Neo4j) graph database for querying and visualization.
 
 
 ## Installation
@@ -245,7 +271,7 @@ This script leverages multithreading to speed up the process.
 
 Setup a Spark cluster with 1 m5 large driver node and 3 r5.4xlarge workers, each with 100GB root volume attached.
 
-Run `./worklfow` on the driver to start parsing the Bitcoin data and writing to csvs
+Run the Airflow job on the driver to start parsing the Bitcoin data and writing to csvs.
 
 ### Neo4j
 
