@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BLOCKSTART=0
-BLOCKEND=249
+BLOCKEND=640000
 
 
 for ((i=$BLOCKSTART; i<=$BLOCKEND;i+=1))

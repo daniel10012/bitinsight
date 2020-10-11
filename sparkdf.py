@@ -1,10 +1,12 @@
 from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession, SQLContext
-from pyspark.sql.functions import explode, concat, col, lit, split, translate, row_number, arrays_zip, when, udf, sum, coalesce, collect_set
+from pyspark.sql.functions import explode, concat, col, lit, split, translate, row_number, arrays_zip, when, udf, sum, coalesce, collect_set,from_utc_timestamp, from_unixtime
 from pyspark.sql.types import *
 from flagged_parsers.ofaclist import get_ofac_addresses
 from pyspark.sql import Row
 import pandas as pd
+from datetime import datetime
+startTime = datetime.now()
 import CONFIG
 #from graphframes import *
 
@@ -21,9 +23,17 @@ spark = SparkSession\
 
 #OFAC
 ofac_list = get_ofac_addresses()
+ofac_pf = pd.DataFrame(ofac_list).explode("addresses")
+ofac_pf["flagger"] = "OFAC"
+ofac_pf["type"] = "OFAC list"
+ofac_pf.columns = ['abuser', 'address', 'flagger', 'type']
+ofac_pf = ofac_pf[['address', 'flagger', 'type', 'abuser']]
+ofac_pf = spark.createDataFrame(ofac_pf.astype(str))
+ofac_pf.show()
+
 ofac_df = spark.createDataFrame(Row(**x) for x in ofac_list).withColumn("address", explode("addresses")).withColumn("flagger", lit("OFAC")).withColumn("type", lit("nan"))
 ofac_df = ofac_df.select("address", "flagger", "type", "abuser")
-#ofac_df.show(truncate=False)
+ofac_df.show(truncate=False)
 
 #bitcoinabuse
 
@@ -39,6 +49,7 @@ babuse_df.show()
 
 flagged_df = ofac_df.union(babuse_df).dropDuplicates(["address"])
 
+#flagged_df.filter(flagged_df.flagger == "OFAC").show()
 # Create blockchain schema
 
 schema = StructType([
@@ -139,13 +150,14 @@ vin_df = jtest_df.drop("tx").drop("vin")
 # joined_df.show()
 
 # Addresses dataframe and write to CSV
+vout_df.show()
 ad_df = vout_df.groupby("address").agg(sum("value").alias("total_value"))
 ad_df = ad_df.select("address", "total_value")
 address_df = ad_df.join(flagged_df, ad_df.address == flagged_df.address, "full").drop(flagged_df.address)
 
 address_df = address_df.withColumn(":LABEL", when(address_df.flagger != "null", "Address;Flagged").otherwise("Address"))
 
-address_df.show()
+#address_df.show()
 
 #address_df.where(address_df.address == "12QtD5BFwRsdNsAZY76UVE1xyCGNTojH9h").show(truncate=False)
 
@@ -155,10 +167,11 @@ address_df.repartition(1).write.format('csv').option('header',False).mode('overw
 
 # Tx dataframe
 
-tx_df = btc_df.select("tx", "time")
-tx_df = tx_df.withColumn("txid", tx_df.tx.txid).drop("tx")
+tx_df = btc_df.select("tx", "time").withColumn('stringtime', from_unixtime(btc_df.time,'yyyy-MM-dd HH:mm:ss'))
+tx_df = tx_df.withColumn("txid", tx_df.tx.txid).drop("tx").drop("time")
+tx_df = tx_df.withColumnRenamed("stringtime", "time")
 tx_df = tx_df.select("txid", "time").withColumn(":LABEL", lit("Transaction"))
-tx_df.show()
+#tx_df.show()
 
 tx_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/tx_df.csv')
 
@@ -166,11 +179,12 @@ tx_df.repartition(1).write.format('csv').option('header',False).mode('overwrite'
 
 rel_txad_df = vout_df.select("txid", "address").withColumn("type", lit("out"))
 rel_txad_df.repartition(1).write.format('csv').option('header',False).mode('overwrite').option('sep',',').save('./csvs/rel_txad_df.csv')
-rel_txad_df.show()
+#rel_txad_df.show()
 
 
 # rel adtx dataframe
 rel_adtx_df = vin_df.join(vout_df, vin_df.vin_id == vout_df.vout_id)
+#rel_adtx_df.show(truncate=False)
 rel_adtx_df = rel_adtx_df.select(vout_df.address, vin_df.txid).withColumn("type", lit("in"))
 #rel_adtx_df.show(truncate=False)
 
@@ -179,15 +193,15 @@ rel_adtx_df.repartition(1).write.format('csv').option('header',False).mode('over
 
 # graphframes
 
-# vertices = ad_df.select("address").distinct()
-# vertices = vertices.withColumnRenamed("address", "id")
-# vertices.show()
-#
-# edges = rel_adtx_df.select("txid", "address").withColumnRenamed("address", "address_in")
-# edges = edges.join(rel_txad_df, edges.txid == rel_txad_df.txid).select("address_in", "address")
-# edges = edges.withColumnRenamed("address_in", "src").withColumnRenamed("address", "dst")
-# #edges = edges.groupBy("address").agg(collect_set('word').alias('words'))
-# edges.show()
+vertices_df = ad_df.select("address").distinct()
+vertices_df = vertices_df.withColumnRenamed("address", "id")
+#vertices_df.show()
+
+edges = rel_adtx_df.select("txid", "address").withColumnRenamed("address", "address_in")
+edges = edges.join(rel_txad_df, edges.txid == rel_txad_df.txid).select("address_in", "address")
+edges = edges.withColumnRenamed("address_in", "src").withColumnRenamed("address", "dst")
+edges = edges.groupBy("src").agg(collect_set('dst')).withColumnRenamed("collect_set(dst)", "dst")
+#edges.show(truncate=False)
 #
 # g = GraphFrame(vertices, edges)
 #
@@ -200,7 +214,7 @@ rel_adtx_df.repartition(1).write.format('csv').option('header',False).mode('over
 
 
 
-
+print(datetime.now() - startTime)
 
 
 
