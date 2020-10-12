@@ -14,6 +14,7 @@ This solutions is offered for Bitcoin but would easily be transferable to other 
 3. [Pipeline](README.md#Pipeline)
 4. [Installation](README.md#Installation)
 5. [Visualization](README.md#Web-App)
+6. [Next steps](README.md#Next steps)
 
 ## Motivation
 
@@ -320,4 +321,10 @@ For further inspection we can just click on the nodes to expand the relationship
 
 ![Image of UI Example](images/demo2.jpg)
 
+
+## Next steps
+
+- Spark Graphframes to cluster addresses by possible wallets. This gives a clue on who controls a collection of addresses and therefore offers better tracking capabilities
+- Airflow to keep the data current by running one batch job per day
+- Custom address flagging capabilities through a flask interface and Postgres
 
