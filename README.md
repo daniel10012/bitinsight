@@ -13,7 +13,7 @@ This solutions is offered for Bitcoin but would easily be transferable to other 
 2. [Dataset](README.md#Dataset)
 3. [Pipeline](README.md#Pipeline)
 4. [Installation](README.md#Installation)
-5. [Visualization](README.md#Web-App)
+5. [Visualization](README.md#Visualization)
 6. [Next steps](README.md#Next)
 
 ## Motivation
@@ -150,7 +150,7 @@ This data can be seen as a graph as showed below
 
 ![Image of Graph Bitcoin](images/neo4j-bitcoin.png)
 
-As sees here blocks are linked to each other (by way of a Merkle root) and contain multiple transactions.
+Blocks are linked to each other (by way of a Merkle root) and contain multiple transactions.
 
 Each transaction has inputs and outputs that can be seen as containing the bitcoins themselves.
 
@@ -184,7 +184,8 @@ The data is deserialized in the form of JSON files by the way of JSON RPC calls.
 The amount of data in each block is skewed: the last blocks contain many more transactions than the first blocks.
 To allow fast parsing we split the work between 3 nodes, each processing respectively 400K, 200K and 50K blocks.
 Each JSON block created is dropped into an S3 bucket.
-See instructions to setup [Bitcoin Core](README.md#Bitcoin Core)
+See instructions to setup [Bitcoin Core](README.md#BitcoinCore).
+
 Run `./getblocks.sh` on each node with the appropriate start and end block values to deserialize Bitcoin block data into JSON and write into the dedicated AWS S3 bucket.
 
 
@@ -252,7 +253,7 @@ Those files will be ingested in our [Neo4j](README.md#Neo4j) graph database for 
 - 1 m5 large instance for the Neo4j database
 
 
-### Bitcoin Core
+### BitcoinCore
 
 Installing Bitcoin Core will synchronize and download the blockchain from peers on the network in serialized blk.*dat files.
 
@@ -286,7 +287,7 @@ Run the Airflow job on the driver to start parsing the Bitcoin data and writing 
 
 ### Neo4j
 
-Install Neo4j on a m5 large instance with a 3TB disk.
+Install Neo4j on a m5 large instance.
 
 Ingesting the whole blockchain data just by iteration could take months.
 
@@ -325,6 +326,6 @@ For further inspection we can just click on the nodes to expand the relationship
 ## Next
 
 - Spark Graphframes to cluster addresses by possible wallets. This gives a clue on who controls a collection of addresses and therefore offers better tracking capabilities
-- Airflow to keep the data current by running one batch job per day
+- Run one Airflow job per day to keep the data current
 - Custom address flagging capabilities through a flask interface and Postgres
 
