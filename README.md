@@ -306,8 +306,18 @@ Now start the import by running `sudo /usr/bin/neo4j-admin import --nodes=/var/l
 
 We can now visualize and query the bitcoin blockchain.
 
+Here we are trying to onboard a client with the address `1DHTjbizE2JH8ERD7TsUe1MRJ6fZ89TxeK`.
+
+We check if it has any connection to a flagged address at 3 transaction separation degree.
+
+`match path = (a:Address)-[*6]-(:Flagged) where a.addressId = "1DHTjbizE2JH8ERD7TsUe1MRJ6fZ89TxeK" return path`
+
+![Image of UI Example](images/demo.jpg)
+
+This address is connected to two flagged addresses and might therefore need further inspection.
+
+For further inspection we can just click on the nodes to expand the relationships
+
+![Image of UI Example](images/demo2.jpg)
 
 
-### Find link to blacklisted address
-CYPHER blabla
-publicip/7473
