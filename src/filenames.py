@@ -1,4 +1,4 @@
-import CONFIG
+from src import CONFIG
 
 
 def bitcoin_files_names(n):

@@ -202,7 +202,7 @@ Put the resulting CSV in the `flagged` folder.
 
 **Full Flagged List**
 
-Run `python3 flagged_list.py` to get the full aggregated Flagged list
+Run `python3 flagged_list.py` to get the full aggregated Flagged list written in its dedicated S3 bucket.
 
 
 ### Transformation
@@ -219,9 +219,9 @@ This makes it difficult to tune Spark and catch potential errors.
 
 Therefore the job is split into smaller batches of 10K blocks scheduled via Airflow.
 
-Airflow can be set with `airflow initdb` and starting the server `airflow webserver -p 8082` and the scheduler `airflow scheduler`.
+Put `batchdag.py` in your dags folder and run `airflow initdb`, start the server `airflow webserver -p 8082` and the scheduler `airflow scheduler`.
 
-We can then launch the job from the UI.
+
 
 ### Tunning
 

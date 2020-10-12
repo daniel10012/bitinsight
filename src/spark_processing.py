@@ -1,12 +1,10 @@
 import sys
-import CONFIG
-from pyspark import SparkContext, SparkConf, Row
-from pyspark.sql import SparkSession, SQLContext
-from pyspark.sql.functions import explode, concat, lit, when, coalesce, broadcast, from_unixtime
+from src import CONFIG
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import explode, concat, lit, when, broadcast, from_unixtime
 from pyspark.sql.types import *
-from datetime import datetime
 import awswrangler as wr
-from filenames import bitcoin_files_names
+from src.filenames import bitcoin_files_names
 
 
 
@@ -86,13 +84,14 @@ def parse_bitcoin():
     json_df = json_df.withColumn("address", explode("addresses")).withColumn("txid", json_df.tx.txid)
     vout_df = json_df.select("txid", "time", "vout_id", "value", "address")
 
+
     # append vout_df to parquet
 
     vout_df.write.mode('append').parquet(f"{CONFIG.S3vout}/vout_df.parquet")
 
     # reread from parquet to get full vout history
 
-    vout_df = spark.read.parquet(f"{CONFIG.S3vout}/vout_df.parquet")
+    vout_df_all = spark.read.parquet(f"{CONFIG.S3vout}/vout_df.parquet")
 
 
     # Get Vin dataframe
@@ -132,8 +131,8 @@ def parse_bitcoin():
 
     # rel adtx dataframe
 
-    rel_adtx_df = vin_df.join(vout_df, vin_df.vin_id == vout_df.vout_id)
-    rel_adtx_df = rel_adtx_df.select(vout_df.address, vin_df.txid).withColumn("type", lit("in"))
+    rel_adtx_df = vin_df.join(vout_df_all, vin_df.vin_id == vout_df_all.vout_id)
+    rel_adtx_df = rel_adtx_df.select(vout_df_all.address, vin_df.txid).withColumn("type", lit("in"))
 
     rel_adtx_df.write.csv(f"{CONFIG.S3csv}/rel_adtx_df", header=None, mode="append")
 

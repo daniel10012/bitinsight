@@ -1,5 +1,4 @@
-import sys
-import CONFIG
+from src import CONFIG
 import pandas as pd
 import awswrangler as wr
 import requests
