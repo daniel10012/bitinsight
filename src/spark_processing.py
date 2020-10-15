@@ -9,6 +9,11 @@ from src.filenames import bitcoin_files_names
 
 
 def parse_bitcoin():
+    """
+    Parsing function to get the full blockchain and flagged addresses data.
+    Extracts addresses, transaction and flagging information.
+    Writes the data to formatted csvs.
+    """
 
     # set up spark session
     spark = SparkSession \
@@ -20,6 +25,7 @@ def parse_bitcoin():
     # get batch list of bitcoin files
 
     list_files = bitcoin_files_names(sys.argv[5])
+
 
     # Import flagged addresses
 
@@ -85,11 +91,11 @@ def parse_bitcoin():
     vout_df = json_df.select("txid", "time", "vout_id", "value", "address")
 
 
-    # append vout_df to parquet
+    # Wrtie vout_df to parquet
 
     vout_df.write.mode('append').parquet(f"{CONFIG.S3vout}/vout_df.parquet")
 
-    # reread from parquet to get full vout history
+    # Reread from parquet to get full vout history
 
     vout_df_all = spark.read.parquet(f"{CONFIG.S3vout}/vout_df.parquet")
 
@@ -103,7 +109,7 @@ def parse_bitcoin():
     vin_df = json_df2.drop("tx").drop("vin")
 
 
-    # Address dataframe and write to CSV
+    # Create address dataframe and write to CSV
 
     ad_df = vout_df.select("address").distinct()
     address_df = ad_df.join(broadcast(flagged_df), ad_df.address == flagged_df.address, "left").drop(flagged_df.address)
@@ -112,7 +118,7 @@ def parse_bitcoin():
     address_df.write.csv(f"{CONFIG.S3csv}/address_df", header=None, mode="append")
 
 
-    # Tx dataframe
+    # Transactions dataframe
 
     tx_df = btc_df.select("tx", "time").withColumn('stringtime', from_unixtime(btc_df.time,'yyyy-MM-dd HH:mm:ss'))
     tx_df = tx_df.withColumn("txid", tx_df.tx.txid).drop("tx").drop("time")
@@ -122,14 +128,14 @@ def parse_bitcoin():
     tx_df.write.csv(f"{CONFIG.S3csv}/tx_df", header=None, mode="append")
 
 
-    # rel txad dataframe
+    # Relations between transactions and addresses dataframe
 
     rel_txad_df = vout_df.select("txid", "address").withColumn("type", lit("out"))
 
     rel_txad_df.write.csv(f"{CONFIG.S3csv}/rel_txad_df", header=None, mode="append")
 
 
-    # rel adtx dataframe
+    # Relations between addresses and transactions dataframe
 
     rel_adtx_df = vin_df.join(vout_df_all, vin_df.vin_id == vout_df_all.vout_id)
     rel_adtx_df = rel_adtx_df.select(vout_df_all.address, vin_df.txid).withColumn("type", lit("in"))
@@ -140,7 +146,6 @@ def parse_bitcoin():
     # stop spark session
 
     spark.stop()
-
 
 
 
