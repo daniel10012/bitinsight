@@ -1,0 +1,5 @@
+# Find if the address is connected less than 6 nodes away (via 3 transactions and 3 addresses) to a Flagged address
+
+MATCH PATH = (a:Address{addressId:"1WdVPGjGqW1LTtCkaujqJj843P3vC7xRf"})-[*..6]-(f:Flagged)
+USING SCAN f:Flagged
+return PATH
