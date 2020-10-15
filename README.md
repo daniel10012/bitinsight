@@ -182,7 +182,7 @@ They are concatenated in a unified schema in a panda dataframe of about 600,000 
 Bitcoin Core nodes synchronizes the blockchain in raw format from the peers in the network.
 The data is deserialized in the form of JSON files by the way of JSON RPC calls.
 The amount of data in each block is skewed: the last blocks contain many more transactions than the first blocks.
-To allow fast parsing we split the work between 3 nodes, each processing respectively 400K, 200K and 50K blocks.
+To allow fast parsing the work is split between 3 nodes, each processing respectively 400K, 200K and 50K blocks.
 Each JSON block created is dropped into an S3 bucket.
 See instructions to setup [Bitcoin Core](README.md#BitcoinCore).
 
@@ -218,7 +218,7 @@ This makes it difficult to tune Spark and catch potential errors.
 
 Therefore the job is split into smaller batches of 10K blocks scheduled via Airflow.
 
-Because of the structure of the data we have to persist part of it in Parquet to reference across batches ("vouts").
+Because of the structure of the data, part of it has to be persisted in Parquet to reference across batches ("vouts").
 
 Put `batchdag.py` in your dags folder and run `airflow initdb`, start the server `airflow webserver -p 8082` and the scheduler `airflow scheduler`.
 
@@ -260,7 +260,7 @@ Those files will be ingested in our [Neo4j](README.md#Neo4j) graph database for 
 
 Installing Bitcoin Core will synchronize and download the blockchain from peers on the network in serialized blk.*dat files.
 
-When the files are up to date we will be able to query them with JSON RPC calls and get JSON files in return.
+When the files are up to date they can be queried with JSON RPC calls and get JSON files in return.
 
 The raw data is around 300GB (sep2020) and growing so 3 m5 large instances are needed with each a 150GB EBS storage.
 
@@ -305,7 +305,7 @@ This should complete in about 2 hours.
 
 ## Visualization
 
-We can now visualize and query the blockchain.
+Now the blockchain can be visualized and queried.
 
 In the example below an exchange is looking to onboard a client with the Bitcoin address `1WdVPGjGqW1LTtCkaujqJj843P3vC7xRf`.
 
@@ -321,7 +321,7 @@ return PATH`
 
 This address is indeed connected to a flagged address and intermediate transactions appear clearly on the graph.
 
-For further inspection we can just click on the nodes to expand the relationships
+For further inspection, just click on the nodes to expand the relationships
 
 ![Image of UI Example](images/demo4.jpg)
 
