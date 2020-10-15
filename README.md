@@ -1,6 +1,6 @@
 # BitInsight
 ![BitInsight](images/BitInsight.jpg)
-Enabling detection of addresses linked to blacklisted Bitcoins.
+Enabling detection of address links to blacklisted Bitcoins.
  
 Compliance teams at exchanges and financial institutions can leverage this tool when onboarding new clients to comply with regulations.
 
@@ -14,7 +14,7 @@ This solutions is offered for Bitcoin but would easily be transferable to other 
 3. [Pipeline](README.md#Pipeline)
 4. [Installation](README.md#Installation)
 5. [Visualization](README.md#Visualization)
-6. [Next steps](README.md#Next)
+6. [Next steps](README.md#Next steps)
 
 ## Motivation
 
@@ -325,7 +325,7 @@ For further inspection we can just click on the nodes to expand the relationship
 ![Image of UI Example](images/demo4.jpg)
 
 
-## Next
+## Next steps
 
 - Spark Graphframes to cluster addresses by possible wallets. This gives a clue on who controls a collection of addresses and therefore offers better tracking capabilities
 - Run one Airflow job per day to keep the data current
