@@ -28,9 +28,9 @@ This has attracted the scrutiny of the government leading to more stringent comp
 
 There are many Blockchain explorers out there based on relational databases, and while they are great to explore the content of blocks and transactions, they don't offer an easy way to link them together.
 
-Our pipeline imports the Blockchain in a graph database that will allow easy tracking and pattern analysis of transactions.
+Bitinsight is a tool that automatically detects blacklisted Bitcoins and allows easy tracking and pattern analysis of transactions.
 
-Compliance teams are then able to easily query and visualize links to blacklisted bitcoins when onboarding new clients.
+Compliance teams are then able to easily query and visualize links to flagged bitcoins when onboarding new clients.
    
 
 ## Dataset
@@ -146,19 +146,19 @@ The JSON format of each block is presented below as an example for `block 100000
     }
 ```
 
-This data can be seen as a graph as showed below
+The Bitcoin blockchain can be seen as a graph as showed below
 
 ![Image of Graph Bitcoin](images/neo4j-bitcoin.png)
 
 Blocks are linked to each other (by way of a Merkle root) and contain multiple transactions.
 
-Each transaction has inputs and outputs that can be seen as containing the bitcoins themselves.
+Each transaction has inputs and outputs that can be seen as containing the Bitcoins themselves.
 
 Each output (that can also be and input) is locked by an address.
 
-Therefore addresses can be seen as the "wallets" that control the bitcoins contained in the outputs.
+Therefore addresses can be seen as a "wallet" that control the Bitcoins contained in the outputs.
 
-For our purpose we will only create transaction and address nodes and link them together.
+For the detection purpose, BitInsight displays only transaction and address nodes and link them together.
 
 ![Image of Graph Detection](images/detection.jpg)
 
@@ -187,7 +187,7 @@ Each JSON block created is dropped into an S3 bucket.
 See instructions to setup [Bitcoin Core](README.md#BitcoinCore).
 
 Run `./getblocks.sh` on each node with the appropriate start and end block values to deserialize Bitcoin block data into JSON and write into the dedicated AWS S3 bucket.
-
+This script uses multithreading to accelerate the import.
 
 #### Flagged Addresses
 
@@ -197,8 +197,7 @@ The scrapper parses the Specially Designated Nationals And Blocked Persons List 
 
 **Bitcoinabuse**
 
-Download the complete list of self declared scam Bitcoin addresses with the [API](https://www.bitcoinabuse.com/api-docs)
-Put the resulting CSV in the `flagged` folder.
+Download the complete list of self declared scam Bitcoin addresses with the [API](https://www.bitcoinabuse.com/api-docs) and put the resulting CSV in the `src` folder.
 
 **Full Flagged List**
 
@@ -207,9 +206,9 @@ Run `python3 flagged_list.py` to get the full aggregated Flagged list written in
 
 ### Transformation
 
-The [spark cluster](README.md#Spark) ingests the JSON files from the S3 buckets to dataframes.
+The [spark cluster](README.md#Spark) ingests the JSON and Parquet files from the S3 buckets to dataframes.
 
-It then proceeds to transformations to be able to write CSVs in the right format for ingestion in Neo4j.
+It then proceeds to transformations to be able to write CSVs in the right format for ingestion by Neo4j.
 
 #### Batch Processing
 
@@ -218,6 +217,8 @@ The large size of the blockchain (2.6TB) implies that a single Spark job would t
 This makes it difficult to tune Spark and catch potential errors.
 
 Therefore the job is split into smaller batches of 10K blocks scheduled via Airflow.
+
+Because of the structure of the data we have to persist part of it in Parquet to reference across batches ("vouts").
 
 Put `batchdag.py` in your dags folder and run `airflow initdb`, start the server `airflow webserver -p 8082` and the scheduler `airflow scheduler`.
 
@@ -229,13 +230,15 @@ A batch from block 600K to 610K takes up to 2H and results in out of memory erro
 
 The highly nested nature of the JSON files makes schema inference by Spark really slow.
 
-Defining a custom schema and coalescing the number of partitions on read to 150 makes the process significantly faster.
+Defining a custom schema and coalescing the number of partitions on read makes the process significantly faster to less than an hour.
 
-The spark cluster has 16 CPU per worker. Optimizing the options to  `--driver-memory 34G --executor-memory 34G --num-executors 8 --executor-cores 5` gives the best performance and there are no more memory issues.
+The spark cluster has 16 CPU per worker. Optimizing the options to  `--driver-memory 6G --executor-memory 34G --num-executors 8 --executor-cores 5` gives the best performance and resolves memory issues.
  
 ### Results
 
 The transformations merges the Bitcoin and Flagged frames and extracts the data in a right format for an ingestion by Neo4j.
+
+Several steps of joining inputs and outputs and cross reference addresses are necessary.
 
 CSVs are written in four different folders in S3:
 - address: addresses with a label `FLAGGED` if they have been marked
@@ -257,11 +260,11 @@ Those files will be ingested in our [Neo4j](README.md#Neo4j) graph database for 
 
 Installing Bitcoin Core will synchronize and download the blockchain from peers on the network in serialized blk.*dat files.
 
-When the files are up to data we will be able to query them with JSON RPC calls and get JSON files in return.
+When the files are up to date we will be able to query them with JSON RPC calls and get JSON files in return.
 
-The raw data is around 300GB (sep2020) so we will need 3 m5 large instances with each an EBS of 150GB attached.
+The raw data is around 300GB (sep2020) and growing so 3 m5 large instances are needed with each a 150GB EBS storage.
 
-On each instance type `wget https://bitcoin.org/bin/bitcoin-core-0.20.0/bitcoin-0.20.0-x86_64-linux-gnu.tar.gz` to install Bitcoin core.
+On each instance run `wget https://bitcoin.org/bin/bitcoin-core-0.20.0/bitcoin-0.20.0-x86_64-linux-gnu.tar.gz` to install Bitcoin core.
 
 Then unpack it with `tar -xvf bitcoin-0.20.0-x86_64-linux-gnu.tar.gz` and remove the `.tar.gz` file
 
@@ -275,7 +278,6 @@ You can check the progress by typing `bitcoin-cli getblockcount` to get the numb
 
 Once it is complete, you can run `getblocks.sh` to make JSON RPC calls to the node and send the deserialized blocks in JSON format to the S3 bucket (1 file per block).
 
-This script leverages multithreading to speed up the process.
 
 
 
@@ -283,34 +285,33 @@ This script leverages multithreading to speed up the process.
 
 Setup a Spark cluster with 1 m5 large driver node and 3 r5.4xlarge workers, each with 100GB root volume attached.
 
-Run the Airflow job on the driver to start parsing the Bitcoin data and writing to csvs.
+Run the Airflow job `batchdag.py` on the driver to start parsing the Bitcoin data and writing to csvs.
 
 ### Neo4j
 
 Install Neo4j on a m5 large instance.
 
-Ingesting the whole blockchain data just by iteration could take months.
+Ingesting the whole blockchain data with Cypher iteration could take months.
 
 A way faster solution is to use the Neo4j Admin import tool that will load in bulk only for a newly created database.
 
-Place the created CSVs in  `/var/lib/neo4j/import/`.
+Import the CSVs in `var/lib/neo4j/import` and concatenate them with the scripts in `bash_neo4j.sh`
 
-Concatenate them in single files by running `/bashscripts/concat`.
-
-Remove duplicates from the address csv with `uniq -w 26 address.csv > address.csv`
-
-Place the header files in import.
+Create the header files.
 
 Now start the import by running `sudo /usr/bin/neo4j-admin import --nodes=/var/lib/neo4j/import/tx_header.csv,/var/lib/neo4j/import/tx.csv --nodes=/var/lib/neo4j/import/address_header.csv,/var/lib/neo4j/import/address.csv --relationships=/var/lib/neo4j/import/rel_adtx_header.csv,/var/lib/neo4j/import/rel_adtx.csv --relationships=/var/lib/neo4j/import/rel_txad_header.csv,/var/lib/neo4j/import/rel_txad.csv --database=graph.db`
 
+This should complete in about 2 hours.
 
 ## Visualization
 
-We can now visualize and query the bitcoin blockchain.
+We can now visualize and query the blockchain.
 
-Here we are trying to onboard a client with the address `1WdVPGjGqW1LTtCkaujqJj843P3vC7xRf`.
+In the example below an exchange is looking to onboard a client with the Bitcoin address `1WdVPGjGqW1LTtCkaujqJj843P3vC7xRf`.
 
-We check if it has any connection to a flagged address at 3 transaction separation degree.
+They want to know if this address has any connection to a flagged address at a 3 transactions separation degree or less, in which case internal policies might mandate further investigation.
+
+In the UI at [bigdatablocks.live](http://bigdatablocks.live) they type the following query:
 
 `MATCH PATH = (a:Address{addressId:"1WdVPGjGqW1LTtCkaujqJj843P3vC7xRf"})-[*..6]-(f:Flagged)
 USING SCAN f:Flagged
@@ -318,7 +319,7 @@ return PATH`
 
 ![Image of UI Example](images/demo5.jpg)
 
-This address is connected to a flagged address 3 transactions away and might therefore need special attention.
+This address is indeed connected to a flagged address and intermediate transactions appear clearly on the graph.
 
 For further inspection we can just click on the nodes to expand the relationships
 
@@ -328,6 +329,6 @@ For further inspection we can just click on the nodes to expand the relationship
 ## Next
 
 - Spark Graphframes to cluster addresses by possible wallets. This gives a clue on who controls a collection of addresses and therefore offers better tracking capabilities
-- Run one Airflow job per day to keep the data current
+- Run one Airflow job per day to automatically keep the data current
 - Custom address flagging capabilities through a flask interface and Postgres
 
