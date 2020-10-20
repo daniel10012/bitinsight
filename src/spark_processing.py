@@ -4,7 +4,7 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import explode, concat, lit, when, broadcast, from_unixtime
 from pyspark.sql.types import *
 import awswrangler as wr
-from src.filenames import bitcoin_files_names
+from src.utils import bitcoin_files_names
 
 
 
@@ -91,11 +91,11 @@ def parse_bitcoin():
     vout_df = json_df.select("txid", "time", "vout_id", "value", "address")
 
 
-    # Wrtie vout_df to parquet
+    # Write vout_df to parquet
 
     vout_df.write.mode('append').parquet(f"{CONFIG.S3vout}/vout_df.parquet")
 
-    # Reread from parquet to get full vout history
+    # Reread from parquet to get full vout history in batches
 
     vout_df_all = spark.read.parquet(f"{CONFIG.S3vout}/vout_df.parquet")
 

@@ -4,7 +4,7 @@ import awswrangler as wr
 import requests
 
 
-# scrape OFAC list
+# Scrape OFAC list
 
 def get_ofac_addresses():
 
@@ -26,7 +26,7 @@ def get_ofac_addresses():
     return(items)
 
 
-# get parsed OFAC in pd frame
+# Get parsed OFAC in pd frame
 
 ofac_list = get_ofac_addresses()
 ofac_pf = pd.DataFrame(ofac_list).explode("addresses")
@@ -36,7 +36,7 @@ ofac_pf.columns = ['abuser', 'address', 'flagger', 'type']
 ofac_pf = ofac_pf[['address', 'flagger', 'type', 'abuser']]
 
 
-# parse Bitcoin abuse to pd frame
+# Parse Bitcoin abuse to pd frame
 
 babuse_pf = pd.read_csv("flagged_data/records_forever.csv", encoding = "ISO-8859-1", sep=',', error_bad_lines=False, index_col=False, dtype=str)
 babuse_pf = babuse_pf.drop_duplicates()
@@ -47,7 +47,7 @@ babuse_pf['abuser'] = babuse_pf.abuser.str.replace('[\\,\"]', '')
 babuse_pf.columns = ['address', 'flagger', 'type', 'abuser']
 
 
-# concatenate OFAC and Bitcoin abuse
+# Concatenate OFAC and Bitcoin abuse
 
 flagged_pf = babuse_pf.append(ofac_pf, ignore_index=True)
 flagged_pf = flagged_pf.drop_duplicates(subset=['address'])
